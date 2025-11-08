@@ -10,7 +10,8 @@ N_BLOBS = 12
 N_FOOD = 60                     # initial food
 # Movement / energy economics
 ENERGY_LOSS_BASE = 0.6
-SPEED_COST_COEFF = 0.15
+SPEED_COST_COEFF = 0.08
+SPEED_COST_EXP = 1.4          # >1 so faster blobs pay super-linear energy costs
 REPRODUCTION_THRESHOLD = 120
 INITIAL_ENERGY = 80
 FOOD_ENERGY = 50
@@ -21,7 +22,7 @@ MUTATE_STRATEGY_P = 0.07
 
 # Food ecology controls (limited respawn)
 MAX_FOOD = 80            # carrying capacity (hard cap)
-FOOD_SPAWN_PER_TICK = 2  # max spawn attempts per frame
+FOOD_SPAWN_PER_TICK = 10  # max spawn attempts per frame
 FOOD_SPAWN_PROB = 0.5    # success probability per attempt
 
 MAX_FRAMES = 1500
@@ -107,7 +108,8 @@ class Blob:
         self.pos = np.clip(self.pos + step, 0, WORLD_SIZE)
 
         knight_surcharge = 0.4 if self.strategy == "knight" else 0.0
-        move_cost = ENERGY_LOSS_BASE + SPEED_COST_COEFF * self.speed + knight_surcharge
+        speed_penalty = SPEED_COST_COEFF * (self.speed ** SPEED_COST_EXP)
+        move_cost = ENERGY_LOSS_BASE + speed_penalty + knight_surcharge
         self.energy -= move_cost
 
     def eat(self, foods):
@@ -134,7 +136,7 @@ class Blob:
 # ======================
 # World state
 # ======================
-INITIAL_STRATEGIES = ["cardinal","diagonal"]  # seed with two; others can evolve
+INITIAL_STRATEGIES = ["cardinal","diagonal", 'knight','random']  # seed with two; others can evolve
 def random_strategy():
     return INITIAL_STRATEGIES[RNG.integers(len(INITIAL_STRATEGIES))]
 
@@ -167,7 +169,8 @@ for s in STRAT_ORDER:
     legend_handles.append(plt.Line2D([0],[0], marker='o', linestyle='',
                                      markerfacecolor=STRAT_COLOR[s],
                                      markeredgecolor='none', label=s))
-ax_world.legend(handles=legend_handles, title="Strategy", loc="upper right", frameon=True)
+legend_loc_kwargs = {"loc": "upper left", "bbox_to_anchor": (1, 1), "frameon": True}
+ax_world.legend(handles=legend_handles, title="Strategy", **legend_loc_kwargs)
 
 # --- Ratio subplot ---
 ax_ratio.set_title("Population ratios by strategy")
@@ -175,37 +178,34 @@ ax_ratio.set_xlabel("Frame")
 ax_ratio.set_ylabel("Ratio (0-1)")
 ax_ratio.set_ylim(0, 1.0)
 ax_ratio.set_xlim(0, 100)  # will extend dynamically
-ax_ratio.set_autoscalex_on(False)
 
 ratio_lines = {}
 for s in STRAT_ORDER:
     (line,) = ax_ratio.plot([], [], label=s, color=STRAT_COLOR[s])  # exact same colors
     ratio_lines[s] = line
-ax_ratio.legend(loc="upper right", frameon=True)
+ax_ratio.legend(**legend_loc_kwargs)
 
 # --- Avg speed subplot ---
 ax_speed.set_title("Average speed by strategy")
 ax_speed.set_xlabel("Frame")
 ax_speed.set_ylabel("Speed")
 ax_speed.set_xlim(0, 100)
-ax_speed.set_autoscalex_on(False)
 avg_speed_lines = {}
 for s in STRAT_ORDER:
     (line,) = ax_speed.plot([], [], label=s, color=STRAT_COLOR[s])
     avg_speed_lines[s] = line
-ax_speed.legend(loc="upper right", frameon=True)
+ax_speed.legend(**legend_loc_kwargs)
 
 # --- Avg vision subplot ---
 ax_vision.set_title("Average vision by strategy")
 ax_vision.set_xlabel("Frame")
 ax_vision.set_ylabel("Vision")
 ax_vision.set_xlim(0, 100)
-ax_vision.set_autoscalex_on(False)
 avg_vision_lines = {}
 for s in STRAT_ORDER:
     (line,) = ax_vision.plot([], [], label=s, color=STRAT_COLOR[s])
     avg_vision_lines[s] = line
-ax_vision.legend(loc="upper right", frameon=True)
+ax_vision.legend(**legend_loc_kwargs)
 
 # History buffers
 history_frames = []
@@ -296,9 +296,20 @@ def update(frame):
 
     # --- Stats tracking (ratio / avg speed / avg vision) ---
     compute_and_record_stats(frame)
-    x_upper = max(100, frame + 10)
+
     for axis in (ax_ratio, ax_speed, ax_vision):
-        axis.set_xlim(0, x_upper)
+        if frame > axis.get_xlim()[1] - 10:
+            axis.set_xlim(0, frame + 100)
+
+    # dynamically scale y-limits for speed/vision plots to show observed maxima
+    def _max_history(hist_dict):
+        vals = [max(v) for v in hist_dict.values() if v]
+        return max(vals) if vals else 0.0
+
+    max_avg_speed = _max_history(history_avg_speed)
+    max_avg_vision = _max_history(history_avg_vision)
+    ax_speed.set_ylim(0, max(1.0, max_avg_speed * 1.1))
+    ax_vision.set_ylim(0, max(1.0, max_avg_vision * 1.1))
 
     for s in STRAT_ORDER:
         ratio_lines[s].set_data(history_frames, history_ratios[s])
