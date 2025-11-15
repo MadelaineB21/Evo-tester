@@ -1,0 +1,39 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Extension / build artifacts
+*.so
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Locally built Python sources
+.python-build/
+
+# Logs / caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+pip-wheel-metadata/
+pip-log.txt
+*.log
+
+# IDE / OS noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Repo-specific ignores
+AGENTS.md
+Visualisation/DocLookup/

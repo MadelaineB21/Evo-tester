@@ -1,0 +1,32 @@
+[package]
+title = "EvoSimViz"
+version = "0.1.0"
+description = "Omniverse Python UI extension for visualizing an evolution simulation."
+category = "Example"
+changelog = "docs/CHANGELOG.md"
+readme = "docs/README.md"
+keywords = ["kit", "extension", "python", "ui", "evolution", "visualization"]
+
+[dependencies]
+"omni.kit.uiapp" = {}
+
+
+[[python.module]]
+name = "evosim.viz"
+
+
+[documentation]
+pages = [
+    "docs/Overview.md",
+    "docs/CHANGELOG.md",
+]
+
+
+[[test]]
+dependencies = [
+    "omni.kit.test",
+    "omni.kit.ui_test",
+]
+
+args = []
+
